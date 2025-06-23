@@ -266,4 +266,22 @@ Future<void> deleteTag(int tagId) async {
   }
 }
 
+Future<void> updateProduct(int id, String name, String provider, double costPrice, double salePrice) async {
+    final url = Uri.parse('$baseUrl/products/$id');
+    final response = await http.put(
+      url,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'name': name,
+        'provider': provider,
+        'costPrice': costPrice,
+        'salePrice': salePrice,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Error al actualizar el producto: ${response.body}');
+    }
+  }
+
 }

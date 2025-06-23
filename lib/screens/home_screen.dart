@@ -8,7 +8,7 @@ import 'summary_screen.dart';
 import 'staff_screen.dart';
 import 'add_sale_screen.dart';
 import 'add_inventory_screen.dart';
-import 'login_screen.dart';
+import '../models/user_permissions.dart';
 
 class HomeScreen extends StatefulWidget {
   final UserPermissions userPermissions;
@@ -59,8 +59,14 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       print('DEBUG VENTAS RESPONSE BODY: ${response.body}');
 
       if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        // Ordenar por fecha descendente y limitar a 20
+        data.sort((a, b) => DateTime.parse(b['fecha']).compareTo(DateTime.parse(a['fecha'])));
+        final limitedData = data.take(20).toList();
+
         setState(() {
-          _ventas = jsonDecode(response.body);
+          _ventas = limitedData;
           _isLoadingVentas = false;
         });
       } else {
@@ -139,7 +145,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   List<Widget> _buildTabViews() {
     List<Widget> views = [
       _buildInicioTab(),
-      const InventoryScreen(),
+      InventoryScreen(userPermissions: widget.userPermissions),
     ];
 
     if (widget.userPermissions.role == 'jefe' || widget.userPermissions.canAccessResumen) {
@@ -174,10 +180,26 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
                         final empleado = venta['empleado']?['fullName'] ?? 'Desconocido';
 
-                        return _buildListItem(
-                          Icons.shopping_cart,
-                          'Venta #${venta['id']} - Lps. ${venta['total']}',
-                          'Fecha: $fecha | Empleado: $empleado',
+                        return Card(
+                          margin: const EdgeInsets.symmetric(vertical: 4.0),
+                          child: ExpansionTile(
+                            leading: Icon(Icons.shopping_cart, color: AppStyles.primaryGreen),
+                            title: Text('Venta #${venta['id']} - Lps. ${venta['total']}'),
+                            subtitle: Text('Fecha: $fecha | Empleado: $empleado'),
+                            children: (venta['detalles'] as List<dynamic>).map((detalle) {
+                              final producto = detalle['producto'];
+                              final nombreProducto = producto?['name'] ?? 'Producto desconocido';
+                              final cantidad = detalle['cantidad'];
+                              final precio = detalle['precioUnitario'];
+                              final subtotal = (precio * cantidad).toStringAsFixed(2);
+
+                              return ListTile(
+                                title: Text('$nombreProducto x$cantidad'),
+                                subtitle: Text('Lps. $precio c/u'),
+                                trailing: Text('Subtotal: Lps. $subtotal'),
+                              );
+                            }).toList(),
+                          ),
                         );
                       },
                     ),
@@ -248,17 +270,6 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       right: 16,
       child: Row(
         children: botones,
-      ),
-    );
-  }
-
-  Widget _buildListItem(IconData icon, String title, String subtitle) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4.0),
-      child: ListTile(
-        leading: Icon(icon, color: AppStyles.primaryGreen),
-        title: Text(title),
-        subtitle: Text(subtitle),
       ),
     );
   }

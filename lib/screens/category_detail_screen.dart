@@ -3,15 +3,18 @@ import '../utils/app_styles.dart';
 import '../services/inventory_service.dart';
 import 'product_detail_screen.dart';
 import 'add_product_screen.dart';
+import '../models/user_permissions.dart';
 
 class CategoryDetailScreen extends StatefulWidget {
   final String categoryName;
   final int categoryId;
+  final UserPermissions userPermissions;
 
   const CategoryDetailScreen({
     super.key,
     required this.categoryName,
     required this.categoryId,
+    required this.userPermissions,
   });
 
   @override
@@ -40,7 +43,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
           style: TextStyle(color: AppStyles.cardBackground),
         ),
         backgroundColor: AppStyles.primaryGreen,
-        iconTheme: IconThemeData(color: AppStyles.cardBackground), // Cambia el color de la flecha
+        iconTheme: IconThemeData(color: AppStyles.cardBackground),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete),
@@ -82,12 +85,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                           costPrice: (product['costPrice'] as num).toDouble(),
                           quantity: product['stock'],
                           imageUrl: 'https://via.placeholder.com/150',
-                          tags: (product['tags'] as List<dynamic>).map((tag) {
-                            return {
-                              'id': tag['id'],
-                              'name': tag['name'],
-                            };
-                          }).toList(),
+                          tags: (product['tags'] as List<dynamic>).map((tag) => tag as Map<String, dynamic>).toList()
                         ),
                       ),
                     );
@@ -108,21 +106,23 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppStyles.primaryGreen,
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => AddProductScreen(categoryId: widget.categoryId),
-            ),
-          );
-          setState(() {
-            _loadProducts();
-          });
-        },
-        child: const Icon(Icons.add, color: AppStyles.cardBackground),
-      ),
+      floatingActionButton: widget.userPermissions.canAddInventory
+          ? FloatingActionButton(
+              backgroundColor: AppStyles.primaryGreen,
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddProductScreen(categoryId: widget.categoryId),
+                  ),
+                );
+                setState(() {
+                  _loadProducts();
+                });
+              },
+              child: const Icon(Icons.add, color: AppStyles.cardBackground),
+            )
+          : null,
     );
   }
 

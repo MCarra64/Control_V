@@ -3,7 +3,7 @@ import '../utils/app_styles.dart';
 import '../services/inventory_service.dart';
 import 'tag_management_screen.dart';
 
-class ProductDetailScreen extends StatelessWidget {
+class ProductDetailScreen extends StatefulWidget {
   final int productId;
   final String productName;
   final double costPrice;
@@ -25,12 +25,31 @@ class ProductDetailScreen extends StatelessWidget {
     required this.imageUrl,
   });
 
+  @override
+  State<ProductDetailScreen> createState() => _ProductDetailScreenState();
+}
+
+class _ProductDetailScreenState extends State<ProductDetailScreen> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _providerController = TextEditingController();
+  final TextEditingController _costPriceController = TextEditingController();
+  final TextEditingController _salePriceController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController.text = widget.productName;
+    _providerController.text = '';
+    _costPriceController.text = widget.costPrice.toStringAsFixed(2);
+    _salePriceController.text = widget.salePrice.toStringAsFixed(2);
+  }
+
   void _confirmDelete(BuildContext context) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Confirmar eliminación'),
-        content: Text('¿Estás seguro que deseas eliminar el producto "$productName"?'),
+        content: Text('¿Estás seguro que deseas eliminar el producto "${widget.productName}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -39,13 +58,15 @@ class ProductDetailScreen extends StatelessWidget {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
             onPressed: () async {
-              Navigator.pop(context); // Cierra el diálogo
+              Navigator.pop(context);
               try {
-                await InventoryService().deleteProduct(productId);
-                Navigator.pop(context); // Vuelve a la pantalla anterior
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Producto eliminado correctamente')),
-                );
+                await InventoryService().deleteProduct(widget.productId);
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Producto eliminado correctamente')),
+                  );
+                }
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text('Error al eliminar producto: $e')),
@@ -63,21 +84,18 @@ class ProductDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(productName, style: TextStyle(color: AppStyles.cardBackground)),
+        title: Text(widget.productName, style: TextStyle(color: AppStyles.cardBackground)),
         backgroundColor: AppStyles.primaryGreen,
-        iconTheme: IconThemeData(color: AppStyles.cardBackground), // Cambia el color de la flecha
+        iconTheme: IconThemeData(color: AppStyles.cardBackground),
         actions: [
           IconButton(
             icon: const Icon(Icons.delete),
             tooltip: 'Eliminar producto',
-            color: AppStyles.cardBackground,
-            onPressed: () {
-              _confirmDelete(context);
-            },
+            onPressed: () => _confirmDelete(context),
           ),
         ],
       ),
-      backgroundColor: greenBackground,
+      backgroundColor: ProductDetailScreen.greenBackground,
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -95,11 +113,11 @@ class ProductDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            Text('Nombre: $productName', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text('Nombre: ${widget.productName}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const Divider(thickness: 1.5, color: Colors.grey),
-            Text('Precio de costo: \$${costPrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16)),
-            Text('Precio de venta: \$${salePrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16)),
-            Text('Cantidad: $quantity', style: const TextStyle(fontSize: 16)),
+            Text('Precio de costo: Lps. ${widget.costPrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16)),
+            Text('Precio de venta: Lps. ${widget.salePrice.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16)),
+            Text('Cantidad: ${widget.quantity}', style: const TextStyle(fontSize: 16)),
             const Divider(thickness: 1.5, color: Colors.grey),
             const SizedBox(height: 8),
             const Text('Etiquetas:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -109,15 +127,15 @@ class ProductDetailScreen extends StatelessWidget {
               runSpacing: 4.0,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                ...tags.map((tag) => Chip(label: Text(tag['name']))),
+                ...widget.tags.map((tag) => Chip(label: Text(tag['name']))),
                 GestureDetector(
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => TagManagementScreen(
-                          productId: productId,
-                          initialTags: tags,
+                          productId: widget.productId,
+                          initialTags: widget.tags,
                         ),
                       ),
                     );
