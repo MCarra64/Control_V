@@ -59,6 +59,13 @@ class InventoryService {
     }
   }
 
+Future<void> deleteProduct(int productId) async {
+  final response = await http.delete(Uri.parse('$baseUrl/products/$productId'));
+  if (response.statusCode != 200) {
+    throw Exception('No se pudo eliminar el producto');
+  }
+}
+
   Future<List<dynamic>> fetchProductsByCategory(int categoryId) async {
     final url = Uri.parse('http://10.0.2.2:3001/products/by-category/$categoryId');
     final response = await http.get(url);
@@ -251,5 +258,12 @@ class InventoryService {
       throw Exception('Error al obtener etiquetas: ${response.reasonPhrase}');
     }
   }
+
+Future<void> deleteTag(int tagId) async {
+  final response = await http.delete(Uri.parse('$baseUrl/tags/$tagId'));
+  if (response.statusCode != 200) {
+    throw Exception('No se pudo eliminar la etiqueta');
+  }
+}
 
 }

@@ -2,10 +2,6 @@ import 'package:flutter/material.dart';
 import '../utils/app_styles.dart';
 import '../services/inventory_service.dart';
 
-import 'package:flutter/material.dart';
-import '../utils/app_styles.dart';
-import '../services/inventory_service.dart';
-
 class TagManagementScreen extends StatefulWidget {
   final int productId;
   final List<Map<String, dynamic>> initialTags;
@@ -185,14 +181,13 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Confirmar eliminación'),
-        content: Text('¿Estás seguro que deseas eliminar la etiqueta "${tag['name']}"?'),
+        content: Text('¿Qué deseas hacer con la etiqueta "${tag['name']}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancelar'),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+          TextButton(
             onPressed: () async {
               Navigator.pop(context);
               try {
@@ -201,10 +196,26 @@ class _TagManagementScreenState extends State<TagManagementScreen> {
                   tags.removeWhere((t) => t['id'] == tag['id']);
                 });
               } catch (e) {
-                _showError(context, 'Error al eliminar etiqueta: $e');
+                _showError(context, 'Error al quitar la etiqueta del producto: $e');
               }
             },
-            child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+            child: const Text('Quitar del producto'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await _service.deleteTag(tag['id']);
+                setState(() {
+                  tags.removeWhere((t) => t['id'] == tag['id']);
+                  availableTags.removeWhere((t) => t['id'] == tag['id']);
+                });
+              } catch (e) {
+                _showError(context, 'Error al eliminar etiqueta del sistema: $e');
+              }
+            },
+            child: const Text('Eliminar del sistema', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/app_styles.dart';
+import '../services/inventory_service.dart';
 import 'tag_management_screen.dart';
 
 class ProductDetailScreen extends StatelessWidget {
@@ -24,12 +25,57 @@ class ProductDetailScreen extends StatelessWidget {
     required this.imageUrl,
   });
 
+  void _confirmDelete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Confirmar eliminación'),
+        content: Text('¿Estás seguro que deseas eliminar el producto "$productName"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              Navigator.pop(context); // Cierra el diálogo
+              try {
+                await InventoryService().deleteProduct(productId);
+                Navigator.pop(context); // Vuelve a la pantalla anterior
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Producto eliminado correctamente')),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error al eliminar producto: $e')),
+                );
+              }
+            },
+            child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(productName),
+        title: Text(productName, style: TextStyle(color: AppStyles.cardBackground)),
         backgroundColor: AppStyles.primaryGreen,
+        iconTheme: IconThemeData(color: AppStyles.cardBackground), // Cambia el color de la flecha
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete),
+            tooltip: 'Eliminar producto',
+            color: AppStyles.cardBackground,
+            onPressed: () {
+              _confirmDelete(context);
+            },
+          ),
+        ],
       ),
       backgroundColor: greenBackground,
       body: SingleChildScrollView(

@@ -11,6 +11,35 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
+class UserPermissions {
+  final int empleadoId;
+  final String role;
+  final bool canAccessResumen;
+  final bool canAccessControlPersonal;
+  final bool canAddSale;
+  final bool canAddInventory;
+
+  UserPermissions({
+    required this.empleadoId,
+    required this.role,
+    required this.canAccessResumen,
+    required this.canAccessControlPersonal,
+    required this.canAddSale,
+    required this.canAddInventory,
+  });
+
+  factory UserPermissions.fromMap(Map<String, dynamic> data) {
+    return UserPermissions(
+      empleadoId: data['id'],  // Este es el id que devuelve el login
+      role: data['role'] ?? 'empleado',
+      canAccessResumen: data['canAccessResumen'] ?? false,
+      canAccessControlPersonal: data['canAccessControlPersonal'] ?? false,
+      canAddSale: data['canAddSale'] ?? false,
+      canAddInventory: data['canAddInventory'] ?? false,
+    );
+  }
+}
+
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _userController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
@@ -40,10 +69,13 @@ class _LoginScreenState extends State<LoginScreen> {
         final data = jsonDecode(response.body);
 
         if (data['id'] != null) {
-          // Login exitoso
+          final userPermissions = UserPermissions.fromMap(data);
+
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(userPermissions: userPermissions),
+            ),
           );
         } else {
           _showError('Credenciales inválidas');

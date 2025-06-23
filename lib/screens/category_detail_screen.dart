@@ -35,11 +35,16 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.categoryName),
+        title: Text(
+          widget.categoryName,
+          style: TextStyle(color: AppStyles.cardBackground),
+        ),
         backgroundColor: AppStyles.primaryGreen,
+        iconTheme: IconThemeData(color: AppStyles.cardBackground), // Cambia el color de la flecha
         actions: [
           IconButton(
             icon: const Icon(Icons.delete),
+            color: AppStyles.cardBackground,
             onPressed: _confirmDelete,
           ),
         ],
@@ -116,7 +121,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
             _loadProducts();
           });
         },
-        child: const Icon(Icons.add),
+        child: const Icon(Icons.add, color: AppStyles.cardBackground),
       ),
     );
   }

@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:intl/intl.dart';
 import '../utils/app_styles.dart';
 import 'inventory_screen.dart';
 import 'summary_screen.dart';
 import 'staff_screen.dart';
+import 'add_sale_screen.dart';
+import 'add_inventory_screen.dart';
+import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final UserPermissions userPermissions;
+
+  const HomeScreen({super.key, required this.userPermissions});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -13,19 +21,71 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
-  // Simulación de permisos cargados desde backend (esto lo asignas al iniciar sesión)
-  bool canAddSale = true;       // Simula el permiso de añadir venta
-  bool canAddInventory = false; // Simula el permiso de añadir inventario
+  List<dynamic> _ventas = [];
+  bool _isLoadingVentas = true;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+
+    _tabController = TabController(
+      length: _getTabCount(),
+      vsync: this,
+    );
+
+    _tabController.addListener(() {
+      setState(() {});
+    });
+
+    _loadVentas();
+  }
+
+  int _getTabCount() {
+    int count = 2; // inicio + inventario
+    if (widget.userPermissions.role == 'jefe' || widget.userPermissions.canAccessResumen) {
+      count++;
+    }
+    if (widget.userPermissions.role == 'jefe' || widget.userPermissions.canAccessControlPersonal) {
+      count++;
+    }
+    return count;
+  }
+
+  Future<void> _loadVentas() async {
+    try {
+      final response = await http.get(Uri.parse('http://10.0.2.2:3001/ventas'));
+
+      print('DEBUG VENTAS RESPONSE CODE: ${response.statusCode}');
+      print('DEBUG VENTAS RESPONSE BODY: ${response.body}');
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _ventas = jsonDecode(response.body);
+          _isLoadingVentas = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingVentas = false;
+        });
+        _showError('Error al cargar ventas');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingVentas = false;
+      });
+      _showError('Error de conexión: $e');
+    }
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
+    final canAddSale = widget.userPermissions.canAddSale;
+    final canAddInventory = widget.userPermissions.canAddInventory;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -42,65 +102,91 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           indicatorColor: AppStyles.lightBackground,
           labelColor: Colors.white,
           unselectedLabelColor: AppStyles.textLight,
-          tabs: const [
-            Tab(icon: Icon(Icons.home)),
-            Tab(icon: Icon(Icons.inventory)),
-            Tab(icon: Icon(Icons.show_chart)),
-            Tab(icon: Icon(Icons.people)),
-          ],
+          tabs: _buildTabs(),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Stack(
         children: [
-          _buildInicioTab(),
-          const InventoryScreen(),
-          const SummaryScreen(),
-          const StaffScreen(),
+          TabBarView(
+            controller: _tabController,
+            children: _buildTabViews(),
+          ),
+          if (_tabController.index == 0)
+            _buildBotonesSegunPermiso(canAddSale, canAddInventory),
         ],
       ),
       backgroundColor: AppStyles.lightBackground,
     );
   }
 
+  List<Widget> _buildTabs() {
+    List<Widget> tabs = [
+      const Tab(icon: Icon(Icons.home)),
+      const Tab(icon: Icon(Icons.inventory)),
+    ];
+
+    if (widget.userPermissions.role == 'jefe' || widget.userPermissions.canAccessResumen) {
+      tabs.add(const Tab(icon: Icon(Icons.show_chart)));
+    }
+
+    if (widget.userPermissions.role == 'jefe' || widget.userPermissions.canAccessControlPersonal) {
+      tabs.add(const Tab(icon: Icon(Icons.people)));
+    }
+
+    return tabs;
+  }
+
+  List<Widget> _buildTabViews() {
+    List<Widget> views = [
+      _buildInicioTab(),
+      const InventoryScreen(),
+    ];
+
+    if (widget.userPermissions.role == 'jefe' || widget.userPermissions.canAccessResumen) {
+      views.add(const SummaryScreen());
+    }
+
+    if (widget.userPermissions.role == 'jefe' || widget.userPermissions.canAccessControlPersonal) {
+      views.add(const StaffScreen());
+    }
+
+    return views;
+  }
+
   Widget _buildInicioTab() {
-    return Stack(
+    return Column(
       children: [
-        Column(
-          children: [
-            // Mensaje temporal
-            Container(
-              width: double.infinity,
-              color: Colors.green[100],
-              padding: const EdgeInsets.all(8.0),
-              margin: const EdgeInsets.all(8.0),
-              child: const Text(
-                'Mensaje temporal',
-                style: TextStyle(fontSize: 16),
-              ),
-            ),
+        const SizedBox(height: 16.0),
+        Expanded(
+          child: _isLoadingVentas
+              ? const Center(child: CircularProgressIndicator())
+              : _ventas.isEmpty
+                  ? const Center(child: Text('No hay ventas registradas.'))
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      itemCount: _ventas.length,
+                      itemBuilder: (_, index) {
+                        final venta = _ventas[index];
 
-            // Lista de ventas / inventario
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                children: [
-                  _buildListItem(Icons.shopping_cart, 'Venta', 'Descripción de la venta'),
-                  _buildListItem(Icons.inventory, 'Inventario Agregado', 'Descripción del inventario agregado'),
-                  _buildListItem(Icons.shopping_cart, 'Venta', 'Descripción de la venta'),
-                  _buildListItem(Icons.inventory, 'Inventario Agregado', 'Descripción del inventario agregado'),
+                        final fecha = DateFormat('dd/MM/yyyy HH:mm').format(
+                          DateTime.parse(venta['fecha']),
+                        );
 
-                ],
-              ),
-            ),
-          ],
+                        final empleado = venta['empleado']?['fullName'] ?? 'Desconocido';
+
+                        return _buildListItem(
+                          Icons.shopping_cart,
+                          'Venta #${venta['id']} - Lps. ${venta['total']}',
+                          'Fecha: $fecha | Empleado: $empleado',
+                        );
+                      },
+                    ),
         ),
-        _buildBotonesSegunPermiso()
       ],
     );
   }
 
-  Widget _buildBotonesSegunPermiso() {
+  Widget _buildBotonesSegunPermiso(bool canAddSale, bool canAddInventory) {
     List<Widget> botones = [];
 
     if (canAddSale) {
@@ -111,13 +197,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               backgroundColor: AppStyles.primaryGreen,
               padding: const EdgeInsets.symmetric(vertical: 14.0),
             ),
-            onPressed: () {
-              // Acción para añadir venta
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AddSaleScreen(
+                    canModifyPrice: widget.userPermissions.canAddInventory,
+                    empleadoId: widget.userPermissions.empleadoId,
+                  ),
+                ),
+              );
+              _loadVentas();
             },
-            child: const Text(
-              'Añadir venta',
-              style: TextStyle(fontSize: 16, color: Colors.white),
-            ),
+            child: const Text('Añadir venta', style: TextStyle(color: Colors.white)),
           ),
         ),
       );
@@ -125,7 +217,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
     if (canAddInventory) {
       if (botones.isNotEmpty) {
-        botones.add(const SizedBox(width: 10)); // Espaciador si hay ambos
+        botones.add(const SizedBox(width: 10));
       }
       botones.add(
         Expanded(
@@ -135,19 +227,19 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               padding: const EdgeInsets.symmetric(vertical: 14.0),
             ),
             onPressed: () {
-              // Acción para añadir inventario
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AddInventoryScreen()),
+              );
             },
-            child: const Text(
-              'Añadir inventario',
-              style: TextStyle(fontSize: 16, color: Colors.white),
-            ),
+            child: const Text('Añadir inventario', style: TextStyle(color: Colors.white)),
           ),
         ),
       );
     }
 
     if (botones.isEmpty) {
-      return const SizedBox(); // No muestra nada si no hay permisos
+      return const SizedBox();
     }
 
     return Positioned(
